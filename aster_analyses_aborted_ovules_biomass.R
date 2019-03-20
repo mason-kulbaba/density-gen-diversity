@@ -696,7 +696,7 @@ summary(tot)
 ha.lm<- lm(log(mass.a) ~ factor(Den), data=hi)
 
 summary(ha.lm)
-summary(b)
+
 
 lsmeans(ha.lm, specs="Den", type="response")
 
@@ -794,7 +794,7 @@ summary(b.lm)
 ref_grid(b.lm)
 emmeans(b.lm, "Den", "Gen", type='response')
 
-plot(emmeans(b.lm, "Den", "Gen", type='response'))
+#plot(emmeans(b.lm, "Den", "Gen", type='response'))
 
 
 pairs(emmeans(b.lm, "Den", "Gen", type='response'))
@@ -832,7 +832,7 @@ summary(lm3)
 
 
 emmeans(lm3, "Den", "Gen", type="response")
-plot(emmeans(lm3, "Den", "Gen", type="response"))
+#plot(emmeans(lm3, "Den", "Gen", type="response"))
 pairs(emmeans(lm3, "Den","Gen", type="response"))
 test(emmeans(lm3, "Den","Gen", type="response"))
 
