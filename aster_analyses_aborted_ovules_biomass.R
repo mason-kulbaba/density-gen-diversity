@@ -1,8 +1,26 @@
+#########################################################################################
+#                                                                                       #
+# The following code performs fixed-effects aster analyses on data examining the effects#
+# of density and effective genetic population size (Ne) on female (seeds seet) and male #
+# (seeds sired) fitness. LM analysis of biomass (above and below ground) and number of  #
+# aborted ovules follows the aster analyses.                                            #    
+#                                                                                       #
+#                                                                                       #
+#                                                                                       #
+# For any questions, please contact Mason Kulbaba: mason.kulbaba@gmail.com              #
+#                                                                                       #
+#########################################################################################
+
+#set your working directory
+setwd()
+
+#Begin with analysis of female fitenss (seeds set)
+
 
 #Load data
 fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-Ne/data/aster.dat.csv")
 
-#change class of factor variables
+#ensure class of factor variables
 fin$Den<- as.factor(fin$Den)
 fin$Gen<- as.factor(fin$Gen)
 fin$plotID<- as.factor(fin$plotID)
@@ -22,7 +40,7 @@ vars<- c( "flw", "frt", "frt.2","seeds")
 redata <- reshape(fin, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
 
 
-#Designation of fitness variable
+#Designation of terminal fitness variable (aka "artifice" variable...I don't like that name)
 fit <- grepl("seeds", as.character(redata$varb))
 fit<- as.numeric(fit)
 
