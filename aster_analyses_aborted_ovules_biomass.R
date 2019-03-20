@@ -1,7 +1,7 @@
 #########################################################################################
 #                                                                                       #
 # The following code performs fixed-effects aster analyses on data examining the effects#
-# of density and effective genetic population size (Ne) on female (seeds seet) fitness. #         #
+# of density and effective genetic population size (Ne) on female (seeds seet) fitness. #
 # LM analysis of biomass (above and below ground) and number of aborted ovules follows  #
 # the aster analyses.                                                                   #
 #                                                                                       #    
@@ -357,7 +357,7 @@ with(redataL, sort(unique(as.character(varb)[fit == 0])))
 with(redataL, sort(unique(as.character(varb)[fit == 1])))
 
 #add a variable "root" to redata, where value is 2
-# value is 2 here to compliment the male fitness estimates (see aster_analyses_sires.R)
+# value is 2 here to compliment the male fitness estimates (see density_male.R)
 # Only working with High Ne (2 full-sib individuals from 6 families), and can't always 
 # asign paternity between two full-sibs. So, we assigned paternity to families
 
