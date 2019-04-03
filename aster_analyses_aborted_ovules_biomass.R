@@ -19,7 +19,7 @@ setwd()
 
 
 #Load data
-fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-Ne/data/aster.dat.csv")
+fin<- read.csv("aster.dat.csv")
 
 #ensure class of factor variables
 fin$Den<- as.factor(fin$Den)
