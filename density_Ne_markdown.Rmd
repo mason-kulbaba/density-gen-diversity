@@ -1,7 +1,7 @@
 ---
-title: "Test Markdown File!"
-author: "Mason Kulbaba"
-date: "August 25, 2018"
+title: "Lifetime fitness through female and male function: the influence of density and genetically effective population size"
+author: "Mason W. Kulbaba & Ruth G. Shaw"
+date: "April 5, 2019"
 output: pdf_document
 ---
 
@@ -10,29 +10,120 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Introduction
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+The following code performs fixed-effects aster analyses on data examining the effects
+of density and effective genetic population size (Ne) on female (seeds seet) fitness. 
+LM analysis of biomass (above and below ground) and number of aborted ovules follows  
+the aster analyses.   
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+Please send any questions to Mason Kulbaba (mason.kulbaba@gmail.com)
+        
+## Preliminaries   
 
-```{r cars}
-summary(cars)
+Set working directory and load data.
+```{r global options, echo=FALSE}
+
 ```
 
-## Including Plots
+                                                                                           
+Examine data
+```{r }
+fin<- read.csv("data/aster.dat.csv")
 
-Plots can also be included, for example:
+names(fin)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+head(fin)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Make sure Den (density treatment), Gen (Ne treatment), plotID, plantID, and familyID are all classified as factors. Otherwise
+```{r}
+fin$Den<- as.factor(fin$Den)
+fin$Gen<- as.factor(fin$Gen)
+fin$plotID<- as.factor(fin$plotID)
+fin$plantID<- as.factor(fin$plantID)
+fin$familyID<- as.factor(fin$familyID)
+```
 
-### Plots
 
-We showed a simple plot above, here is a more complicated one.
+## Setting up for aster analyses
+
+Load aster package (make sure you have most current version)
+
+```{r}
+library(aster)
+```
+
+Begin by naming variables that will be used in the graphical model of the aster analyses:
+
+flw - total number of flowers produced
+frt - total number of fruits produced
+frt.2 - subsetted number of fruits collected
+seeds - total number of seeds collected from subsetted fruits
+
+```{r}
+vars<- c( "flw", "frt", "frt.2","seeds")
+```
+
+Reshape the data so that all response variables are located in a single vector, in a new data
+set called "redata"
+```{r}
+redata <- reshape(fin, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
+```
+
+Designate the terminal fitness variable "seeds" (make it numberic), and then add it to the reshaped data
+```{r}
+fit <- grepl("seeds", as.character(redata$varb))
+fit<- as.numeric(fit)
+redata$fit <- fit
+```
+
+Check
+```{r}
+with(redata, sort(unique(as.character(varb)[fit == 0])))
+with(redata, sort(unique(as.character(varb)[fit == 1])))
+```
+
+Add a variable "root" to redata, where value is 1. This is the "starting point" of the aster graphical model (i.e. a seed planted)
+```{r}
+redata<- data.frame(redata, root=1)
+```
+
+Set up the graphical model and designate the statistical distribution for each node.
+This graphical model has four nodes (in object `pred`) described earlier. Statistical family for each node is described by object `fam`.
+```{r}
+pred<- c(0,1,2,3)
+fam<- c(1,2,2,2)
+```
+
+Show distribution family for each node
+```{r}
+sapply(fam.default(), as.character)[fam]
+```
+
+## Aster Analyses
+
+First aster analysis with only fitness data. Note, `aster` reads the `redata` version of the data.
+
+```{r}
+aout<- aster(resp~varb , pred, fam, varb, id, root, data=redata)
+
+summary(aout, show.graph=T)
+```
+
+Add density to the model as a fixed effect. Note that we follow the "no naked predictors" rule with `fit:(Den)`
+```{r}
+aout.d<- aster(resp~varb + fit:(Den), pred, fam, varb, id, root, data=redata)
+
+summary(aout.d, show.graph=T)
+```
+
+Do not try to determine the significance `Density` from the `summary` statement. These are not reliable. Instead, perform a liklihood ratio test. The results of the liklihood ratio test show that the model with `Density` explains significantly more variation than the model without.
+
+```{r}
+anova(aout, aout.d)
+```
+
 
 #### Make Up Data
 
