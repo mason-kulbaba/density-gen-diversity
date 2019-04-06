@@ -118,33 +118,237 @@ aout.d<- aster(resp~varb + fit:(Den), pred, fam, varb, id, root, data=redata)
 summary(aout.d, show.graph=T)
 ```
 
+
 Do not try to determine the significance `Density` from the `summary` statement. These are not reliable. Instead, perform a liklihood ratio test. The results of the liklihood ratio test show that the model with `Density` explains significantly more variation than the model without.
 
 ```{r}
 anova(aout, aout.d)
 ```
 
-
-#### Make Up Data
-
-Simulate regression data, and do the regression.
+Now, add density and Ne (`Gen`) to the model, and perform a liklihood ratio test
 ```{r}
-n <- 50
-x <- seq(1, n)
-a.true <- 3
-b.true <- 1.5
-y.true <- a.true + b.true * x
-s.true <- 17.3
-y <- y.true + s.true * rnorm(n)
-out1 <- lm(y ~ x)
-summary(out1)
+aout.dg<- aster(resp~varb + fit:(Den + Gen), pred, fam, varb, id, root, data=redata)
+
+summary(aout.dg, show.graph=T)
+
+anova(aout.d, aout.dg)
 ```
 
-#### Figure with Code to Make It Shown
 
-The following figure is produced by the following code
-```{r fig.align='center', fig.cap='Simple Linear Regression', label='regression'}
+Include interaction between `Den` & `Gen` and test for significance of interaction with liklihood ratio test.
+```{r}
+aout.dg2<- aster(resp~varb + fit:(Den + Gen + Den*Gen), pred, fam, varb, id, root, data=redata)
 
-mydata <- data.frame(x, y)
-plot(mydata)
-``````
+summary(aout.dg2)
+
+anova(aout.dg, aout.dg2)
+```
+
+Finally, include plotID to model and perform yet anohter liklihood ratio test
+```{r}
+aoutc<- aster(resp~varb + fit:(plotID + Den + Gen + Den*Gen), pred, fam, varb, id, root, data=redata)
+
+summary(aoutc, show.graph=T)
+
+
+anova(aout.dg2, aoutc)
+```
+
+That was fun. The results of these aster models (of entire data set) and liklihood ratio tests are presetned in Table 1 of the manuscript. The next steps will produce mean fitness and standard errors for these factors.
+
+## Calculation of Mean Fitness and Standard Errors
+
+As the effects of `GEN` was significant in the above analyses, we can divide the data into high and low Ne data sets, and perform additional analsyis to calcualte mean fitness and standard errors for the density treatmetns. The aster analyses for high and low Ne are performed in parallel below (i.e. each step is performed twice, once for high Ne and once for low Ne analses).
+
+First, isloate high (HG) and low (LG) data from the main redata file, and drop unused levels. Therefore, don't have to do "reshape" data step. `HG`/`hg` = High Ne, `LG`/`lg` = Low Ne
+```{r}
+redataHG<- subset(redata, Gen=="HG")
+redataLG<- subset(redata, Gen=="LG")
+
+redataHG<- droplevels(redataHG)
+redataLG<- droplevels(redataLG)
+```
+
+Perform aster analysis on `HG` and `LG` data with just fitness data (no predictors), then add `Den` and perform a liklihood ratio test.
+```{r}
+aoutHG<- aster(resp~varb, pred, fam, varb, id, root, data=redataHG)
+aoutHG2<- aster(resp~varb + fit:(Den), pred, fam, varb, id, root, data=redataHG)
+
+summary(aoutHG, show.graph = T)
+summary(aoutHG2, show.graph=T)
+
+anova(aoutHG, aoutHG2)
+```
+
+
+Perform same sequence of analyses on `LG` dataset 
+```{r}
+aoutLG<- aster(resp~varb, pred, fam, varb, id, root, data=redataLG)
+aoutLG2<- aster(resp~varb + fit:(Den), pred, fam, varb, id, root, data=redataLG)
+
+summary(aoutLG, show.graph = T)
+summary(aoutLG2, show.graph=T)
+
+anova(aoutLG, aoutLG2)
+
+```
+
+The effectds of density (`Den`) was significant in both the high (`HG`) and low (`LG`) effective genetic population size data sets. 
+
+First step is to generate MLE of saturated model mean value parameter vector: mu. Again, all step are performed twice, once for high and once for low Ne data. Because we want treatment-level estiamtes of fitness, we generate these estimates from the analyses that included density: `aoutHG` and `aoutLG`
+```{r}
+pout.HG<- predict(aoutHG, se.fit=TRUE)
+
+pout.LG<- predict(aoutLG, se.fit=TRUE)
+```
+
+Make design matrix data.frame of indivudals for each density level (low, med., high), that has a 1 for each element of the matrix. These will eventually be replaced with actual fitness values in later steps.
+```{r}
+fred.hg <- data.frame( Den=levels(redataHG$Den), flw=1, frt=1,frt.2=1, seeds=1,root = 1)
+
+fred.lg <- data.frame( Den=levels(redataLG$Den), flw=1, frt=1,frt.2=1, seeds=1,root = 1)
+```
+
+Reshape the design matrix just as the actual data
+```{r}
+renewdata.hg <- reshape(fred.hg, varying = list(vars),
+                     direction = "long", timevar = "varb",
+                     times = as.factor(vars), v.names = "resp")
+
+renewdata.lg <- reshape(fred.lg, varying = list(vars),
+                        direction = "long", timevar = "varb",
+                        times = as.factor(vars), v.names = "resp")
+```
+
+
+Make character string from "varb" of renewdata without actual values (i.e., the layers of varb in renewdata), and add it to each renewdata object
+```{r}
+layer<- gsub("[0-9]", "", as.character(renewdata.hg$varb))
+
+
+renewdata.hg<- data.frame(renewdata.hg, layer= layer)
+renewdata.lg<- data.frame(renewdata.lg, layer= layer)
+```
+
+
+
+Add "seeds" in new layer column of renewdata as numeric, called fit
+Note: only need one `fit` object as it is the same for both High and Low Ne data, and add to each renew data file
+```{r}
+fit<- as.numeric(layer=="seeds")
+
+renewdata.gh<- data.frame(renewdata.hg, fit = fit)
+renewdata.lg<- data.frame(renewdata.lg, fit = fit)
+```
+
+
+Rerun prediction of aster analyses, with the reshaped design matrices 
+```{r}
+pout.hg<- predict(aoutHG2, newdata= renewdata.hg, varvar= varb,
+               idvar = id, root = root, se.fit = TRUE)
+
+pout.lg<- predict(aoutLG2, newdata= renewdata.lg, varvar= varb,
+               idvar = id, root = root, se.fit = TRUE)
+```
+
+Check class of each column in prediction outputs
+```{r}
+sapply(pout.hg, class)
+
+sapply(pout.lg, class)
+```
+
+Lengths of fit and se.fit (12) match row number of renewdata (as should be with predict.aster)
+```{r}
+sapply(pout.hg, length)
+sapply(pout.lg, length)
+```
+
+Therefore, we can make 12 CIs, one for each of 4 nodes of graphical model, and 3 density treatmetns (4 nodes x 3 treatments =12 estimates).
+
+
+Put the parameter estimates into a matrix with individuals in rows and nodes in columns
+
+Extract HG resutls, and produce a 3 x 4 matrix (3 density treatments by 4 nodes)
+```{r}
+nnode<- length(vars)
+sally.hg<- matrix(pout.hg$fit, ncol = nnode)
+dim(sally.hg)
+```
+
+Name the rows (by `Den` treatments) and columns (as nodes), and view the matrix
+```{r}
+rownames(sally.hg)<- unique(as.character(renewdata.hg$Den))
+colnames(sally.hg)<- unique(as.character(renewdata.hg$varb))
+
+round(sally.hg, 3)
+```
+
+Now generate matrix of standard errors, and name rows and columns just as fitness estimates
+```{r}
+nnode2<- length(vars)
+sally2<- matrix(pout.hg$se.fit, ncol = nnode)
+dim(sally2)
+
+rownames(sally2)<- unique(as.character(renewdata.hg$Den))
+colnames(sally2)<- unique(as.character(renewdata.hg$varb))
+
+round(sally2, 3)
+```
+
+Combine estimates with standard errors for only final node: seeds
+```{r}
+ests<- sally.hg[,grepl("seeds", colnames(sally.hg))]
+se<-  sally2[,grepl("seeds", colnames(sally2))]
+
+HG<- cbind(ests, se)
+
+```
+
+
+Perform the same steps for `LG` results
+```{r}
+nnode<- length(vars)
+sally.lg<- matrix(pout.lg$fit, ncol = nnode)
+dim(sally.lg)
+
+rownames(sally.lg)<- unique(as.character(renewdata.lg$Den))
+colnames(sally.lg)<- unique(as.character(renewdata.lg$varb))
+
+round(sally.lg, 3)
+```
+
+Extract standard errors
+```{r}
+nnode2<- length(vars)
+sally.lg2<- matrix(pout.lg$se.fit, ncol = nnode)
+dim(sally.lg2)
+
+rownames(sally.lg2)<- unique(as.character(renewdata.lg$Den))
+colnames(sally.lg2)<- unique(as.character(renewdata.lg$varb))
+
+round(sally.lg2, 3)
+```
+
+Combine estimates with standard errors for only final node: seeds
+```{r}
+ests<- sally.lg[,grepl("seeds", colnames(sally.lg))]
+se<-  sally.lg2[,grepl("seeds", colnames(sally.lg2))]
+
+LG<- cbind(ests, se)
+
+```
+
+
+These are the fitness and standard errors for HG and LG treatments (across densities)
+```{r}
+HG
+LG
+```
+
+
+
+
+
+
+
