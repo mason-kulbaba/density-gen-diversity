@@ -1,25 +1,24 @@
 ---
 title: "Lifetime fitness through female and male function: the influence of density and genetically effective population size"
 author: "Mason W. Kulbaba & Ruth G. Shaw"
-date: "April 5, 2019"
+date: "Last Updated April 11, 2019"
 output: pdf_document
+toc: true
+toc_depth: 3
 ---
 
-```{r setup, include=FALSE}
-
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## Introduction
+# Introduction
 
 The following code performs fixed-effects aster analyses on data examining the effects
-of density and effective genetic population size (Ne) on female (seeds seet) fitness. 
+of density and effective genetic population size (N~e~) on female (seeds seet) fitness. 
 LM analysis of biomass (above and below ground) and number of aborted ovules follows  
 the aster analyses.   
 
 Please send any questions to Mason Kulbaba (mason.kulbaba@gmail.com)
         
 ## Preliminaries   
+
+
 
 Set working directory and load data.
 ```{r global options, echo=FALSE}
@@ -36,7 +35,7 @@ names(fin)
 head(fin)
 ```
 
-Make sure Den (density treatment), Gen (Ne treatment), plotID, plantID, and familyID are all classified as factors. Otherwise
+Make sure Den (density treatment), Gen (N~e~ treatment), plotID, plantID, and familyID are all classified as factors. Otherwise
 ```{r}
 fin$Den<- as.factor(fin$Den)
 fin$Gen<- as.factor(fin$Gen)
@@ -101,7 +100,7 @@ Show distribution family for each node
 sapply(fam.default(), as.character)[fam]
 ```
 
-## Aster Analyses
+# Main Aster Analyses for Female Fitness (Seeds set)
 
 First aster analysis with only fitness data. Note, `aster` reads the `redata` version of the data.
 
@@ -125,7 +124,7 @@ Do not try to determine the significance `Density` from the `summary` statement.
 anova(aout, aout.d)
 ```
 
-Now, add density and Ne (`Gen`) to the model, and perform a liklihood ratio test
+Now, add density and N~e~ (`Gen`) to the model, and perform a liklihood ratio test
 ```{r}
 aout.dg<- aster(resp~varb + fit:(Den + Gen), pred, fam, varb, id, root, data=redata)
 
@@ -158,9 +157,9 @@ That was fun. The results of these aster models (of entire data set) and likliho
 
 ## Calculation of Mean Fitness and Standard Errors
 
-As the effects of `GEN` was significant in the above analyses, we can divide the data into high and low Ne data sets, and perform additional analsyis to calcualte mean fitness and standard errors for the density treatmetns. The aster analyses for high and low Ne are performed in parallel below (i.e. each step is performed twice, once for high Ne and once for low Ne analses).
+As the effects of `GEN` was significant in the above analyses, we can divide the data into high and low N~e~ data sets, and perform additional analsyis to calcualte mean fitness and standard errors for the density treatmetns. The aster analyses for high and low N~e~ are performed in parallel below (i.e. each step is performed twice, once for high N~e~ and once for low N~e~ analses).
 
-First, isloate high (HG) and low (LG) data from the main redata file, and drop unused levels. Therefore, don't have to do "reshape" data step. `HG`/`hg` = High Ne, `LG`/`lg` = Low Ne
+First, isloate high (HG) and low (LG) data from the main redata file, and drop unused levels. Therefore, don't have to do "reshape" data step. `HG`/`hg` = High N~e~, `LG`/`lg` = Low N~e~
 ```{r}
 redataHG<- subset(redata, Gen=="HG")
 redataLG<- subset(redata, Gen=="LG")
@@ -195,7 +194,7 @@ anova(aoutLG, aoutLG2)
 
 The effectds of density (`Den`) was significant in both the high (`HG`) and low (`LG`) effective genetic population size data sets. 
 
-First step is to generate MLE of saturated model mean value parameter vector: mu. Again, all step are performed twice, once for high and once for low Ne data. Because we want treatment-level estiamtes of fitness, we generate these estimates from the analyses that included density: `aoutHG` and `aoutLG`
+First step is to generate MLE of saturated model mean value parameter vector: mu. Again, all step are performed twice, once for high and once for low N~e~ data. Because we want treatment-level estiamtes of fitness, we generate these estimates from the analyses that included density: `aoutHG` and `aoutLG`
 ```{r}
 pout.HG<- predict(aoutHG, se.fit=TRUE)
 
@@ -233,7 +232,7 @@ renewdata.lg<- data.frame(renewdata.lg, layer= layer)
 
 
 Add "seeds" in new layer column of renewdata as numeric, called fit
-Note: only need one `fit` object as it is the same for both High and Low Ne data, and add to each renew data file
+Note: only need one `fit` object as it is the same for both High and Low N~e~ data, and add to each renew data file
 ```{r}
 fit<- as.numeric(layer=="seeds")
 
@@ -346,9 +345,910 @@ HG
 LG
 ```
 
+#Comparing Female (seeds set) and Male (seeds sired) Fitness
+
+##Calculate mean seed set for each treat x N~e~ treatment to "relativize" female fitness
+
+Calculate mean seed set for each individual plot. These values will be used to relativize fitness estimates
+```{r}
+aggregate(fin$seeds, by=list(fin$plotID), mean)
+
+```
+
+Load data with number of seeds sired (male fitness), where sires is the number of seeds sired for each family
+```{r}
+fin<- read.csv("data/aster.sire.dat.csv")
+
+names(fin)
+```
+
+Note that the file `aster.sire.dat.csv` only has data from the High N~e~ treatment. We are only working with High N~e~ (2 full-sib individuals from 6 families), as we could not always asign paternity between two full-sibs. So, we assigned paternity to families and not individual plants.
+
+
+Sum of number of seeds that we successfully assigned paternity to, per density treatment
+```{r}
+aggregate(fin$sires, by=list(fin$Den), sum)
+
+```
+
+
+Make sure class of factor variables for predictors (as was done with female fintess.
+```{r}
+fin$Den<- as.factor(fin$Den)
+fin$Gen<- as.factor(fin$Gen)
+fin$plotID<- as.factor(fin$plotID)
+fin$plantID<- as.factor(fin$plantID)
+fin$familyID<- as.factor(fin$familyID)
+```
+
+The following generally follows the steps for performing aster analyses of female fitness (seeds set)
+
+Load aster package
+```{r}
+library(aster)
+```
+
+Set the variables to be included in the graphical model. Notice that these are the same variables: flower number -> total fruit -> subsampled fruit -> seeds set
+```{r}
+vars<- c( "flw", "frt", "frt.2","seeds")
+
+```
+
+
+Subset data into High, Medium, and Low density treatments
+```{r}
+datH<- subset(fin, Den=="H")
+datH$familyID<- droplevels(datH$familyID)
+datM<- subset(fin, Den=="M")
+datM$familyID<- droplevels(datM$familyID)
+datL<- subset(fin, Den=="L")
+datL$familyID<- droplevels(datL$familyID)
+```
+
+Perform the same data reshaping steps as before, reshaping data so that all response variables are located in a single vector in a new data sets called for each density treatment
+```{r}
+redataH <- reshape(datH, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
+redataM <- reshape(datM, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
+redataL <- reshape(datL, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
+```
+
+Designation of fitness variable, and add to each reshaped data.
+```{r}
+fit <- grepl("seeds", as.character(redataH$varb))
+fit<- as.numeric(fit)
+
+redataH$fit <- fit
+redataM$fit <- fit
+redataL$fit <- fit
+```
+
+Check organization of graphical models
+```{r}
+with(redataH, sort(unique(as.character(varb)[fit == 0])))
+with(redataH, sort(unique(as.character(varb)[fit == 1])))
+
+with(redataM, sort(unique(as.character(varb)[fit == 0])))
+with(redataM, sort(unique(as.character(varb)[fit == 1])))
+
+with(redataL, sort(unique(as.character(varb)[fit == 0])))
+with(redataL, sort(unique(as.character(varb)[fit == 1])))
+```
+
+
+
+Setting the varible "root" to each redata file differs from the previous aster analyses. Here "root" is given the value 2 here to compliment the male fitness estimates (see section: Male Fitness).
+
+```{r}
+redataH<- data.frame(redataH, root=2)
+redataM<- data.frame(redataM, root=2)
+redataL<- data.frame(redataL, root=2)
+```
+
+
+Set graphical model and family for each node
+```{r}
+pred<- c(0,1,2,3)
+fam<- c(1,2,2,2)
+```
+
+Perform aster analyses for three density treatments with `familyID` as fixed-effect
+```{r}
+aoutH<- aster(resp~varb + fit:(familyID), pred, fam, varb, id, root, data=redataH)
+summary(aoutH, show.graph = T)
+
+aoutM<- aster(resp~varb + fit:(familyID), pred, fam, varb, id, root, data=redataM)
+summary(aoutM, show.graph = T)
+
+aoutL<- aster(resp~varb + fit:(familyID), pred, fam, varb, id, root, data=redataL)
+summary(aoutL, show.graph = T)
+```
+
+##Generate Fitness Estimates for Each Genetic Family (familyID) in Each Density Treatment 
+
+High Density Treatment Fitness Estimate
+
+These steps follow those that produced mean fitness estimates for seed set 
+```{r}
+pout<- predict.aster(aoutH, se.fit=TRUE)
+
+#make design matrix
+fred <- data.frame(familyID=levels(redataH$familyID), flw=1, frt=1, frt.2=1, seeds=1,root = 2)
+
+#reshape the design matrix just as the actual data
+renewdata <- reshape(fred, varying = list(vars),
+                     direction = "long", timevar = "varb",
+                     times = as.factor(vars), v.names = "resp")
+
+#make character string from "varb" of renewdata,
+#without actual values (e.g., the layers of varb in renewdata)
+layer<- gsub("[0-9]", "", as.character(renewdata$varb))
+
+#add layer to renewdata
+renewdata<- data.frame(renewdata, layer= layer)
+
+#add fit (seeds) in new layer col of renewdata as numeric, called fit
+fit<- as.numeric(layer=="seeds")
+
+#add fit to renewdata
+renewdata<- data.frame(renewdata, fit = fit)
+
+#rerun prediction of aout, with "made up" renewdata
+pout<- predict(aoutH, newdata= renewdata, varvar= varb,
+               idvar = id, root = root, se.fit = TRUE)
+
+sapply(pout, class)
+
+sapply(pout, length)
+
+#put the parameter estimates into a matrix with individuals in rows
+#and nodes along columns
+nnode<- length(vars)
+sally<- matrix(pout$fit, ncol = nnode)
+dim(sally)# makes 10 x 4 matrix: 10 families by 4 nodes
+
+#name the rows (by familyID) and columns (as nodes)
+rownames(sally)<- unique(as.character(renewdata$familyID))
+colnames(sally)<- unique(as.character(renewdata$varb))
+
+#view matrix 
+round(sally, 3)
+
+#use just totalseeds as predicted (expected) fitneses
+herman<- sally[,grepl("seeds", colnames(sally))]
+
+#Generate Standard Errors for these estimates
+
+nFam<- nrow(fred)
+nnode<- length(vars)
+amat<- array(0, c(nFam, nnode, nFam))
+dim(amat)# makes an 10 x 4 x 10 matrix
+
+
+foo<- grepl("seeds", vars)
+for(k in 1:nFam)
+  amat[k, foo, k]<- 1
+
+#use aout object, with renewdata, and amat format
+pout.amat<- predict(aoutH, newdata= renewdata, varvar= varb,
+                    idvar= id, root = root, se.fit=TRUE, amat = amat)
+
+#pout.amat$fit should be the same as file "herman"
+herman
+pout.amat$fit #they are the same.  Good.
+
+#combine std.err with estimates, and then round
+#to three decimal places
+foo<- cbind(pout.amat$fit, pout.amat$se.fit)
+rownames(foo)<- as.character(fred$familyID)
+colnames(foo)<- c("High Den Fitness", "SE")
+round(foo, 3) 
+H_estimates<- round(foo,3)
+
+H_estimates
 
 
 
 
 
+```
+
+Medium Density Fitness Estiamtes
+```{r}
+#Generate MLE of saturated model mean value parameter vector: mu
+pout<- predict.aster(aoutM, se.fit=TRUE)
+
+
+#make design matrix
+fred <- data.frame(familyID=levels(redataM$familyID), flw=1, frt=1, frt.2=1, seeds=1,root = 2)
+
+#reshape the "made up data" just as the actual data
+renewdata <- reshape(fred, varying = list(vars),
+                     direction = "long", timevar = "varb",
+                     times = as.factor(vars), v.names = "resp")
+
+#make character string from "varb" of renewdata,
+#without actual values (e.g., the layers of varb in renewdata)
+layer<- gsub("[0-9]", "", as.character(renewdata$varb))
+
+#add layer to renewdata
+renewdata<- data.frame(renewdata, layer= layer)
+
+#seed seed.ct in new layer col of renewdata as numeric, called fit
+fit<- as.numeric(layer=="seeds")
+
+#add fit to renewdata
+renewdata<- data.frame(renewdata, fit = fit)
+
+#rerun prediction of aout, with "made up" renewdata
+pout<- predict(aoutM, newdata= renewdata, varvar= varb,
+               idvar = id, root = root, se.fit = TRUE)
+
+sapply(pout, class)
+sapply(pout, length)
+
+#put the parameter estimates into a matrix with familyID in rows
+#and nodes along columns
+nnode<- length(vars)
+sally<- matrix(pout$fit, ncol = nnode)
+dim(sally)# makes 9 x 4 matrix: 9 families by 4 nodes
+
+#name the rows (by Den Treat) and columns (as nodes)
+rownames(sally)<- unique(as.character(renewdata$familyID))
+colnames(sally)<- unique(as.character(renewdata$varb))
+
+#view matrix 
+round(sally, 3)
+
+#use just totalseeds as predicted (expected) fitneses
+herman<- sally[,grepl("seeds", colnames(sally))]
+
+#Generate Standard Errors for these estimates
+
+nFam<- nrow(fred)
+nnode<- length(vars)
+amat<- array(0, c(nFam, nnode, nFam))
+dim(amat)# makes an 9 x 4 x 9 matrix
+
+
+foo<- grepl("seeds", vars)
+for(k in 1:nFam)
+  amat[k, foo, k]<- 1
+
+#use aout object, with renewdata, and amat format
+pout.amat<- predict(aoutM, newdata= renewdata, varvar= varb,
+                    idvar= id, root = root, se.fit=TRUE, amat = amat)
+
+#pout.amat$fit should be the same as file "herman"
+herman
+pout.amat$fit #they are the same.  Good.
+
+#combine std.err with estimates, and then round
+#to three decimal places
+foo<- cbind(pout.amat$fit, pout.amat$se.fit)
+rownames(foo)<- as.character(fred$familyID)
+colnames(foo)<- c("Med Den Fitness", "SE")
+round(foo, 3) 
+M_estimates<- round(foo, 3)
+
+M_estimates
+```
+
+
+Low Densitiy Estimates
+```{r}
+
+#generate MLE of saturated model mean value parameter vector: mu
+pout<- predict.aster(aoutL, se.fit=TRUE)
+
+
+#make data.frame of indivudals for each block (1-8)
+fred <- data.frame(familyID=levels(redataL$familyID), flw=1, frt=1, frt.2=1, seeds=1,root = 2)
+
+#reshape the "made up data" just as the actual data
+renewdata <- reshape(fred, varying = list(vars),
+                     direction = "long", timevar = "varb",
+                     times = as.factor(vars), v.names = "resp")
+
+#make character string from "varb" of renewdata,
+#without actual values (e.g., the layers of varb in renewdata)
+layer<- gsub("[0-9]", "", as.character(renewdata$varb))
+
+#add layer to renewdata
+renewdata<- data.frame(renewdata, layer= layer)
+
+#seed seed.ct in new layer col of renewdata as numeric, called fit
+fit<- as.numeric(layer=="seeds")
+
+#add fit to renewdata
+renewdata<- data.frame(renewdata, fit = fit)
+
+#rerun prediction of aout, with "made up" renewdata
+pout<- predict(aoutM, newdata= renewdata, varvar= varb,
+               idvar = id, root = root, se.fit = TRUE)
+
+sapply(pout, class)
+sapply(pout, length)
+
+#put the parameter estimates into a matrix with familyID in rows
+#and nodes along columns
+nnode<- length(vars)
+sally<- matrix(pout$fit, ncol = nnode)
+dim(sally)# makes 8 x 4 matrix: 8 families by 4 nodes
+
+#name the rows (by Den Treat) and columns (as nodes)
+rownames(sally)<- unique(as.character(renewdata$familyID))
+colnames(sally)<- unique(as.character(renewdata$varb))
+
+#view matrix 
+round(sally, 3)
+
+#use just totalseeds as predicted (expected) fitneses
+herman<- sally[,grepl("seeds", colnames(sally))]
+
+#Generate Standard Errors for these estimates
+
+nFam<- nrow(fred)
+nnode<- length(vars)
+amat<- array(0, c(nFam, nnode, nFam))
+dim(amat)# makes an 8 x 4 x 8 matrix
+
+
+foo<- grepl("seeds", vars)
+for(k in 1:nFam)
+  amat[k, foo, k]<- 1
+
+#use aout object, with renewdata, and amat format
+pout.amat<- predict(aoutL, newdata= renewdata, varvar= varb,
+                    idvar= id, root = root, se.fit=TRUE, amat = amat)
+
+#pout.amat$fit should be the same as file "herman"
+herman
+pout.amat$fit #they are the same.  Good.
+
+#combine std.err with estimates, and then round
+#to three decimal places
+foo<- cbind(pout.amat$fit, pout.amat$se.fit)
+rownames(foo)<- as.character(fred$familyID)
+colnames(foo)<- c("Low Den Fitness", "SE")
+round(foo, 3) 
+L_estimates<- round(foo, 3)
+
+L_estimates
+```
+
+
+The files present the mean fitness and standard error for each genetic family, in each density treatments under high N~e~ conditions
+```{r}
+H_estimates
+M_estimates
+L_estimates
+```
+
+# Estimate Male (Seeds Sired) Fitness
+
+This section performs aster analyses with the number of seeds sired as the terminal fitness node, to obtain mean fitness estiames through male reproductive function. Because these analyses use the same data files as above (for relativized female fitness estimates), we can begin the process of setting up the aster analyses at designating the graphical model variables.
+
+The graphical model for male fitness: flower number -> fruit number -> number of seed sired
+```{r}
+vars<- c( "flw", "frt", "sires")
+```
+
+Reshape data, as with female fitness, so that all response variables are located in a single vector in a new data
+```{r}
+redata <- reshape(fin, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
+```
+
+
+Designation of number of seeds sired ("sires") as fitness variable
+```{r}
+fit <- grepl("sires", as.character(redata$varb))
+fit<- as.numeric(fit)
+
+redata$fit <- fit
+
+with(redata, sort(unique(as.character(varb)[fit == 0])))
+with(redata, sort(unique(as.character(varb)[fit == 1])))
+```
+
+
+
+Add a variable "root" to redata, where value is 2
+
+```{r}
+redata<- data.frame(redata, root=2)
+```
+
+
+Set graphical model and statistical family for each node
+```{r}
+pred<- c(0,1,2)
+fam<- c(1,2,2)
+
+sapply(fam.default(), as.character)[fam]
+```
+
+## Main Aster Analysis of Male Fitness
+
+First analysis with only fitness data, then add `familyID`, and finally density treatment. Perform liklihood ratio test to assess significance of `familyID` and `Den` 
+```{r}
+aout<- aster(resp~varb, pred, fam, varb, id, root, data=redata)
+
+summary(aout)
+
+aout2<- aster(resp~varb +fit:familyID, pred, fam, varb, id, root, data=redata)
+
+summary(aout2)
+```
+
+Effect of `familyID` is not significant
+```{r}
+anova(aout, aout2)
+```
+
+Aster analsyis with `Den`
+```{r}
+aout3<- aster(resp~varb +fit:Den, pred, fam, varb, id, root, data=redata)
+
+
+summary(aout3)
+```
+
+Effect of `Den` is not significant
+```{r}
+anova(aout, aout3)
+```
+
+##Family-specific Male Fitness Estimates
+
+To compare with family-specific estimates of female fitness, we now generate family-specific male fitness estimates.
+
+Load the data with male fitess (seeds sired), make sure all predictors are factors, and set the graphical model: flower number -> fruit number -> number of seed sired
+
+```{r}
+fin<- read.csv("C:data/aster.sire.dat.csv")
+
+fin$Den<- as.factor(fin$Den)
+fin$Gen<- as.factor(fin$Gen)
+fin$plotID<- as.factor(fin$plotID)
+fin$plantID<- as.factor(fin$plantID)
+fin$familyID<- as.factor(fin$familyID)
+
+vars<- c( "flw", "frt", "sires")
+```
+
+
+
+
+Reshape data so that all response variables are located in a single vector in a new data, and add `fit` and `root` to redata.
+```{r}
+redata <- reshape(fin, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
+
+
+fit <- grepl("sires", as.character(redata$varb))
+fit<- as.numeric(fit)
+
+redata$fit <- fit
+
+with(redata, sort(unique(as.character(varb)[fit == 0])))
+with(redata, sort(unique(as.character(varb)[fit == 1])))
+
+redata<- data.frame(redata, root=2)
+```
+
+
+Set graph. model and family for each node
+```{r}
+pred<- c(0,1,2)
+fam<- c(1,2,2)
+```
+
+Split reshaped data file into density-specific files for individual aster analsyses. Drop unused levels
+```{r}
+redataL<-subset(redata, Den=="L")
+
+redataL$familyID<- droplevels(redataL$familyID)
+
+redataM<- subset(redata, Den=="M")
+
+redataM$familyID<- droplevels(redataM$familyID)
+
+redataH<- subset(redata, Den=="H")
+
+redataH$familyID<- droplevels(redataH$familyID)
+```
+
+
+### Low Density Fitness Estiamte for Male Fitness
+
+Aster analysis for low density treatment
+```{r}
+aoutL<- aster(resp~varb + fit:(familyID), pred, fam, varb, id, root, data=redataL)
+
+summary(aoutL, show.graph = T)
+```
+
+Generate MLE of saturated model mean value parameter vector: mu
+```{r}
+pout<- predict.aster(aoutL, se.fit=TRUE)
+```
+
+
+
+Make a design matrix and reshape it just like the origional data
+```{r}
+fred <- data.frame(familyID=levels(redataL$familyID), flw=1, frt=1, sires=1,root = 2)
+
+renewdata <- reshape(fred, varying = list(vars),
+                     direction = "long", timevar = "varb",
+                     times = as.factor(vars), v.names = "resp")
+```
+
+
+
+Ad `varb` and `fit` objects to reshaped design matrix
+```{r}
+layer<- gsub("[0-9]", "", as.character(renewdata$varb))
+
+renewdata<- data.frame(renewdata, layer= layer)
+
+fit<- as.numeric(layer=="sires")
+
+renewdata<- data.frame(renewdata, fit = fit)
+```
+
+
+Generate predicted values from aster analsyis (low density data_, with "made up" design matrix
+```{r}
+pout<- predict(aoutL, newdata= renewdata, varvar= varb,
+               idvar = id, root = root, se.fit = TRUE)
+```
+
+Put the parameter estimates into object `ests` and standard errors into object `se`, that are both matrices with individuals in rows
+and nodes along columns (makes 8 x 3 matrix: 8 indiv by 3 nodes).
+```{r}
+nnode<- length(vars)
+ests<- matrix(pout$fit, ncol = nnode)
+se<- matrix(pout$se.fit, ncol= nnode)
+```
+
+Name the rows (as familID) and columns (as nodes)
+```{r}
+rownames(ests)<- unique(as.character(renewdata$familyID))
+colnames(ests)<- unique(as.character(renewdata$varb))
+
+rownames(se)<- unique(as.character(renewdata$familyID))
+colnames(se)<- unique(as.character(renewdata$varb))
+
+round(ests, 3)
+
+round(se, 3)
+```
+
+Use just seeds sired as predicted fitneses estiamte
+```{r}
+L_ests<- ests[,grepl("sires", colnames(ests))]
+L_se<- se[,grepl("sires", colnames(se))]
+```
+
+Combine estimates and standard errors into single object
+```{r}
+L_fit<- cbind(L_ests, L_se)
+
+round(L_fit, 3)
+```
+
+
+### Medium Density Fitness Estiamte for Male Fitness
+
+Aster analysis for medium density treatment
+```{r}
+aoutM<- aster(resp~varb + fit:(familyID), pred, fam, varb, id, root, data=redataM)
+
+summary(aoutM, show.graph = T)
+```
+
+Generate MLE of saturated model mean value parameter vector: mu
+```{r}
+pout<- predict.aster(aoutM, se.fit=TRUE)
+```
+
+
+
+Make a design matrix and reshape it just like the origional data
+```{r}
+fred <- data.frame(familyID=levels(redataL$familyID), flw=1, frt=1, sires=1,root = 2)
+
+renewdata <- reshape(fred, varying = list(vars),
+                     direction = "long", timevar = "varb",
+                     times = as.factor(vars), v.names = "resp")
+```
+
+
+
+Ad `varb` and `fit` objects to reshaped design matrix
+```{r}
+layer<- gsub("[0-9]", "", as.character(renewdata$varb))
+
+renewdata<- data.frame(renewdata, layer= layer)
+
+fit<- as.numeric(layer=="sires")
+
+renewdata<- data.frame(renewdata, fit = fit)
+```
+
+
+Generate predicted values from aster analsyis (low density data_, with "made up" design matrix
+```{r}
+pout<- predict(aoutM, newdata= renewdata, varvar= varb,
+               idvar = id, root = root, se.fit = TRUE)
+```
+
+Put the parameter estimates into object `ests` and standard errors into object `se`, that are both matrices with individuals in rows
+and nodes along columns (makes 8 x 3 matrix: 8 indiv by 3 nodes).
+```{r}
+nnode<- length(vars)
+ests<- matrix(pout$fit, ncol = nnode)
+se<- matrix(pout$se.fit, ncol= nnode)
+```
+
+Name the rows (as familID) and columns (as nodes)
+```{r}
+rownames(ests)<- unique(as.character(renewdata$familyID))
+colnames(ests)<- unique(as.character(renewdata$varb))
+
+rownames(se)<- unique(as.character(renewdata$familyID))
+colnames(se)<- unique(as.character(renewdata$varb))
+
+round(ests, 3)
+
+round(se, 3)
+```
+
+Use just seeds sired as predicted fitneses estiamte
+```{r}
+M_ests<- ests[,grepl("sires", colnames(ests))]
+M_se<- se[,grepl("sires", colnames(se))]
+```
+
+Combine estimates and standard errors into single object
+```{r}
+M_fit<- cbind(M_ests, M_se)
+
+round(M_fit, 3)
+```
+
+### High Density Fitness Estiamte for Male Fitness
+
+Aster analysis for high density treatment
+```{r}
+aoutH<- aster(resp~varb + fit:(familyID), pred, fam, varb, id, root, data=redataH)
+
+summary(aoutH, show.graph = T)
+```
+
+Generate MLE of saturated model mean value parameter vector: mu
+```{r}
+pout<- predict.aster(aoutH, se.fit=TRUE)
+```
+
+
+
+Make a design matrix and reshape it just like the origional data
+```{r}
+fred <- data.frame(familyID=levels(redataL$familyID), flw=1, frt=1, sires=1,root = 2)
+
+renewdata <- reshape(fred, varying = list(vars),
+                     direction = "long", timevar = "varb",
+                     times = as.factor(vars), v.names = "resp")
+```
+
+
+
+Ad `varb` and `fit` objects to reshaped design matrix
+```{r}
+layer<- gsub("[0-9]", "", as.character(renewdata$varb))
+
+renewdata<- data.frame(renewdata, layer= layer)
+
+fit<- as.numeric(layer=="sires")
+
+renewdata<- data.frame(renewdata, fit = fit)
+```
+
+
+Generate predicted values from aster analsyis (low density data_, with "made up" design matrix
+```{r}
+pout<- predict(aoutH, newdata= renewdata, varvar= varb,
+               idvar = id, root = root, se.fit = TRUE)
+```
+
+Put the parameter estimates into object `ests` and standard errors into object `se`, that are both matrices with individuals in rows
+and nodes along columns (makes 8 x 3 matrix: 8 indiv by 3 nodes).
+```{r}
+nnode<- length(vars)
+ests<- matrix(pout$fit, ncol = nnode)
+se<- matrix(pout$se.fit, ncol= nnode)
+```
+
+Name the rows (as familID) and columns (as nodes)
+```{r}
+rownames(ests)<- unique(as.character(renewdata$familyID))
+colnames(ests)<- unique(as.character(renewdata$varb))
+
+rownames(se)<- unique(as.character(renewdata$familyID))
+colnames(se)<- unique(as.character(renewdata$varb))
+
+round(ests, 3)
+
+round(se, 3)
+```
+
+Use just seeds sired as predicted fitneses estiamte
+```{r}
+H_ests<- ests[,grepl("sires", colnames(ests))]
+H_se<- se[,grepl("sires", colnames(se))]
+```
+
+Combine estimates and standard errors into single object
+```{r}
+H_fit<- cbind(H_ests, H_se)
+
+round(H_fit, 3)
+```
+
+# Above and Below Ground Biomass 
+
+## Preliminary and Summary of Data
+
+The following code summarizes and performs linear analyses of biomass accumulation (above and below ground). The required data is in the same file as the female fitness data.
+
+Reload data and load package `emmeans`
+```{r}
+fin<- read.csv("C:data/aster.dat.csv")
+
+library(emmeans)
+
+
+```
+Subset the data into High and Low N~e~ data
+```{r}
+hi<- subset(fin, Gen=="HG")
+lo<- subset(fin, Gen=="LG")
+
+```
+
+For summary purposes, define a function that will calculate standard errors
+```{r}
+stderr<- function(x) sd(x)/sqrt(length(x))
+```
+
+###Generate Summary Statistics (mean & standard error) for above and below biomass, in High and Low N~e~ plants
+
+High N~e~
+
+Above ground biomass
+```{r}
+aggregate(hi$mass.a, by=list(hi$Den), mean)
+aggregate(hi$mass.a, by=list(hi$Den), stderr)
+```
+
+Below ground biomass
+```{r}
+aggregate(hi$mass.b, by=list(hi$Den), mean)
+aggregate(hi$mass.b, by=list(hi$Den), stderr)
+```
+
+Low N~e~
+Above ground biomass
+```{r}
+aggregate(lo$mass.a, by=list(lo$Den), mean)
+aggregate(lo$mass.a, by=list(lo$Den), stderr)
+```
+
+Below ground biomass
+```{r}
+aggregate(lo$mass.b, by=list(lo$Den), mean)
+aggregate(lo$mass.b, by=list(lo$Den), stderr)
+```
+
+##Linear Analysis of Biomass
+###Above Ground Biomass (`mass.a`)
+
+Sequentially add Density, N~e~, and Den x N~e~ interaction. Note all analyses log-transform biomass.
+```{r}
+f.lm<- lm(log(mass.a) ~ (Den) , data=fin)
+
+f.lm2<- lm(log(mass.a) ~ (Den + Gen) , data=fin)
+
+f.lm3<- lm(log(mass.a) ~ (Den + Gen + Den*Gen) , data=fin)
+
+summary(f.lm)
+summary(f.lm2)
+summary(f.lm3)
+```
+
+Perform liklihood ratio test of models with Density, N~e~, and Den x N~e~ interaction
+```{r}
+anova(f.lm, f.lm2, f.lm3)
+```
+Generate Least Square Means (EMeans) for Density treatmetns across High and Low N~e~
+
+```{r}
+
+emmeans(f.lm2, "Den", type='response', by="Gen")
+
+pairs(emmeans(f.lm2, "Den", type='response', by="Gen"))
+test(emmeans(f.lm2, "Den", type='response', by="Gen"))
+```
+
+
+###Below Ground Biomass (`mass.b`)
+Sequentially add Density, N~e~, and Den x N~e~ interaction. Note all analyses log-transform biomass.
+```{r}
+b.lm<- lm(log(mass.b) ~ (Den) , data=fin)
+
+b.lm2<- lm(log(mass.b) ~ (Den + Gen) , data=fin)
+
+b.lm3<- lm(log(mass.b) ~ (Den + Gen + Den*Gen) , data=fin)
+
+summary(b.lm)
+summary(b.lm2)
+summary(b.lm3)
+```
+
+
+Perform liklihood ratio test of models with Density, N~e~, and Den x N~e~ interaction.
+```{r}
+anova(b.lm, b.lm2, b.lm3)
+```
+
+Generate Least Square Means (EMeans) for Density treatmetns across High and Low N~e~
+```{r}
+emmeans(b.lm2, "Den", type='response', by="Gen")
+
+pairs(emmeans(b.lm2, "Den", type='response', by="Gen"))
+test(emmeans(b.lm2, "Den", type='response', by="Gen"))
+```
+
+
+# Aborted Ovules
+
+## Preliminary and Summary of Data
+
+The following code summarizes and performs linear analyses of the number of aborted ovules. The required data is in the same file as the female fitness data.
+
+Reload data and load package `emmeans`
+```{r}
+fin<- read.csv("C:data/aster.dat.csv")
+
+library(emmeans)
+
+```
+
+Perform linear analysis of aborted ovules (log transformed) with Density, Density + N~e~, and Density + N~e~ + Density x N~e~ in sequential models. 
+```{r}
+lm1<- lm(log(aborted +1) ~ Den , data=fin)
+
+lm2<- lm(log(aborted +1) ~ Den + Gen, data=fin)
+
+lm3<- lm(log(aborted +1) ~ Gen + Den + Den*Gen, data=fin)
+
+summary(lm1)
+summary(lm2)
+summary(lm3)
+```
+
+Perform liklihood ratio test of above models
+```{r}
+anova(lm1, lm2, lm3)
+
+```
+
+Finally, generate least square means 
+```{r}
+emmeans(lm3, "Den", "Gen", type="response")
+pairs(emmeans(lm3, "Den","Gen", type="response"))
+test(emmeans(lm3, "Den","Gen", type="response"))
+
+```
 
