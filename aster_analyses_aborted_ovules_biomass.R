@@ -13,13 +13,13 @@
 #########################################################################################
 
 #set your working directory
-setwd()
+setwd("C:/Users/Mason Kulbaba/Dropbox/git/density-Ne")
 
 #Begin with analysis of female fitenss (seeds set)
 
 
 #Load data
-fin<- read.csv("aster.dat.csv")
+fin<- read.csv("data/aster.dat.csv")
 
 #ensure class of factor variables
 fin$Den<- as.factor(fin$Den)
@@ -127,12 +127,14 @@ redataLG<- droplevels(redataLG)
 aoutHG<- aster(resp~varb, pred, fam, varb, id, root, data=redataHG)
 
 #add density
-aoutHG2<- aster(resp~varb + fit:(Den), pred, fam, varb, id, root, data=redataHG)
+aoutHG2<- aster(resp~varb + fit:Den, pred, fam, varb, id, root, data=redataHG)
+
+aoutHG3<- aster(resp~varb + fit:(Den+ plotID), pred, fam, varb, id, root, data=redataHG)
 
 summary(aoutHG, show.graph = T)
 summary(aoutHG2, show.graph=T)
 
-anova(aoutHG, aoutHG2)# density is significant in high Ne
+anova(aoutHG2, aoutHG3)# density is significant in high Ne
 
 
 #LG with just fitness
@@ -152,14 +154,16 @@ anova(aoutLG, aoutLG2)# density significant in low Ne
 ######################################################
 
 #generate MLE of saturated model mean value parameter vector: mu
-pout.HG<- predict(aoutHG, se.fit=TRUE)
+pout.HG<- predict(aoutHG3, se.fit =TRUE)
 
 pout.LG<- predict(aoutHG, se.fit=TRUE)
 
 ##############
 
+
+
 #make design matrix data.frame of indivudals for each density level (low, med., high)
-fred.hg <- data.frame( Den=levels(redataHG$Den), flw=1, frt=1,frt.2=1, seeds=1,root = 1)
+fred.hg <- data.frame(Den=levels(redataHG$Den), plotID=levels(redataHG$plotID), flw=1, frt=1,frt.2=1, seeds=1,root = 1)
 
 fred.lg <- data.frame( Den=levels(redataLG$Den), flw=1, frt=1,frt.2=1, seeds=1,root = 1)
 
@@ -188,8 +192,37 @@ renewdata.lg<- data.frame(renewdata.lg, layer= layer)
 fit<- as.numeric(layer=="seeds")
 
 
+########################################################
+# This part is new
+
+#Generate fintess estimates and standard errors for each treatment
+nDen<- nrow(fred.hg)
+nnode<- length(vars)
+amat<- array(0, c(nDen, nnode, nDen))
+dim(amat)# makes an 3 x 8 x 3 matrix (3 region types and 8 nodes of graphicla model)
+
+#only want means for k'th individual that contribute to expected
+#fitness, and want to add only sm.2 entries
+
+foo<- grepl("seeds", vars)
+for(k in 1:nDen)
+  amat[k, foo, k]<- 1
+
+#check
+foo #yes, only last node is "true"; corresponds to seeds (sm.2)
+
+#generate predicted valuses using aout object, with renewdata, and amat format
+pout.amat<- predict(aoutHG3, newdata= renewdata.hg, varvar= varb,
+                    idvar= id, root = root, se.fit=TRUE, amat = amat)
+
+foo<- cbind(pout.amat$fit, pout.amat$se.fit)
+
+rownames(foo)<- as.character(fred.hg$Den)
+colnames(foo)<- c("Estimate", "Standard Error")
+foo
+
 #add fit to renewdata
-renewdata.gh<- data.frame(renewdata.hg, fit = fit)
+renewdata.hg<- data.frame(renewdata.hg, fit = fit)
 
 renewdata.lg<- data.frame(renewdata.lg, fit = fit)
 
@@ -215,14 +248,16 @@ sapply(pout.lg, length)
 #put the parameter estimates into a matrix with individuals in rows
 #and nodes in columns
 
+
 #extract HG resutls
 nnode<- length(vars)
 sally.hg<- matrix(pout.hg$fit, ncol = nnode)
 dim(sally.hg)# makes 3 x 4 matrix: 3 densities by 4 nodes
 
 #name the rows (by Den Treat) and columns (as nodes)
-rownames(sally.hg)<- unique(as.character(renewdata.hg$Den))
+rownames(sally.hg)<- as.character(fred.hg$Den) #is this correct?
 colnames(sally.hg)<- unique(as.character(renewdata.hg$varb))
+
 
 #view matrix 
 round(sally.hg, 3)
@@ -233,7 +268,7 @@ sally2<- matrix(pout.hg$se.fit, ncol = nnode)
 dim(sally2)# makes 3 x 4 matrix: 3 densities by 4 nodes
 
 #name the rows (by Den Treat) and columns (as nodes)
-rownames(sally2)<- unique(as.character(renewdata.hg$Den))
+rownames(sally2)<- as.character(fred.hg$Den) #is this correct?
 colnames(sally2)<- unique(as.character(renewdata.hg$varb))
 
 #view matrix 
@@ -245,6 +280,7 @@ se<-  sally2[,grepl("seeds", colnames(sally2))]
 
 HG<- cbind(ests, se)# these are the fitness ests (and SE) for high Ne, across 3 densities
 
+HG
 #now extract LG results
 
 #extrac HG resutls
@@ -714,6 +750,87 @@ emmeans(f.lm2, "Den", type='response', by=vec)
 pairs(emmeans(f.lm2, "Den", type='response', by=vec))
 test(emmeans(f.lm2, "Den", type='response', by=vec))
 
+################################################################
+#Now check for position effects based on three classes 
+
+#First create classes based on plantID value
+  #Two middle position = 1 &12
+
+  #Abutting hexagons = 6 & 7
+
+  #remaining outer plants = 2, 3, 4, 5, 8, 9, 10, 11
+
+#subset data based on above criteria
+
+#reload data
+fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-Ne/data/aster.dat.csv")
+
+
+fin$pos<- 0
+
+fin$pos[fin$plantID == 1 | fin$plantID==12]="mid"
+
+fin$pos[fin$plantID == 6 | fin$plantID==7]="abs"
+
+fin$pos[fin$plantID == 2 | fin$plantID==3| fin$plantID == 4 | fin$plantID==5|fin$plantID == 8| fin$plantID==9| fin$plantID == 10 | fin$plantID==11]="outer"
+
+fin$pos<- as.factor(fin$pos)
+
+#analysis with position
+l<- lm(log(mass.a) ~ pos, data=fin)
+
+lm<- lm(log(mass.a) ~ (Den) , data=fin)
+
+lm2<- lm(log(mass.a) ~ (Den + Gen) , data=fin)
+
+lm3<- lm(log(mass.a) ~ (Den + Gen + Den*Gen) , data=fin)
+
+lm4<- lm(log(mass.a) ~ (Den + Gen + Den*Gen + pos) , data=fin)
+
+
+anova(lm, lm2, lm3, lm4)
+
+summary(l)
+summary(lm)
+summary(lm2)
+summary(lm3)
+summary(lm4)
+
+vec<- c("Gen")
+
+emmeans(lm4, "Den", type='response', by=vec)
+
+pairs(emmeans(lm4, "Den", type='response', by=vec))
+test(emmeans(lm4, "Den", type='response', by=vec))
+
+
+#redo with analysis of below ground biomass
+
+lm<- lm(log(mass.b) ~ (Den) , data=fin)
+
+lm2<- lm(log(mass.b) ~ (Den + Gen) , data=fin)
+
+lm3<- lm(log(mass.b) ~ (Den + Gen + Den*Gen) , data=fin)
+
+lm4<- lm(log(mass.b) ~ (Den + Gen + Den*Gen + pos) , data=fin)
+
+
+anova(lm, lm2, lm3, lm4)
+
+summary(lm)
+summary(lm2)
+summary(lm3)
+summary(lm4)
+
+vec<- c("Den")
+
+emmeans(lm4, "Den", type='response', by=vec)
+
+pairs(emmeans(lm4, "Den", type='response', by=vec))
+test(emmeans(lm4, "Den", type='response', by=vec))
+
+
+
 #below ground biomass
 
 b.lm<- lm(log(mass.b) ~ (Den) , data=fin)
@@ -769,4 +886,57 @@ emmeans(lm3, "Den", "Gen", type="response")
 #plot(emmeans(lm3, "Den", "Gen", type="response"))
 pairs(emmeans(lm3, "Den","Gen", type="response"))
 test(emmeans(lm3, "Den","Gen", type="response"))
+
+###########################
+#Upon advice of Reviewer 2: any association between fitness (seeds set/seeds sired) and flower number?
+
+# note, frt represents all flowers
+lm1<- lm(log(seeds +1) ~ frt, data=fin)
+
+lm2<- lm(log(seeds +1) ~ Den +frt, data=fin)
+
+lm3<- lm(log(seeds +1) ~ Den +Gen+frt, data=fin)
+
+
+anova(lm1, lm2, lm3)
+
+summary(lm3)
+
+
+library(MASS)
+
+flw<- fin$frt
+
+sd<- fin$seeds
+
+flw1<- fitdistr(flw, densfun = "normal")
+flw2<- fitdistr(flw, densfun = "negative binomial")
+flw3<- fitdistr(flw, densfun = "Poisson")
+
+AIC(flw1, flw2, flw3)
+
+
+seed1<- fitdistr(sd, densfun = "normal")
+seed2<- fitdistr(sd, densfun = "negative binomial")
+seed3<- fitdistr(sd, densfun = "Poisson")
+
+AIC(seed1, seed2, seed3)
+
+
+gs<- glm(seeds ~ Den + Gen + flw, family=poisson, data=fin)
+
+summary(gs)
+
+#quick pots by den
+
+high<- subset(fin, Den=="H")
+med<- subset(fin, Den=="M")
+low<- subset(fin, Den=="L")
+
+
+plot(high$frt, high$seeds)
+
+plot(med$frt, med$seeds)
+
+plot(low$frt, low$seeds)
 
