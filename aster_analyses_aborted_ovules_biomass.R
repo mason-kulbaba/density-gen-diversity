@@ -127,26 +127,29 @@ redataLG<- droplevels(redataLG)
 aoutHG<- aster(resp~varb, pred, fam, varb, id, root, data=redataHG)
 
 #add density
-aoutHG2<- aster(resp~varb + fit:Den, pred, fam, varb, id, root, data=redataHG)
+aoutHG2<- aster(resp~varb + fit:plotID, pred, fam, varb, id, root, data=redataHG)
 
 aoutHG3<- aster(resp~varb + fit:(Den+ plotID), pred, fam, varb, id, root, data=redataHG)
 
 summary(aoutHG, show.graph = T)
 summary(aoutHG2, show.graph=T)
+summary(aoutHG3, show.graph=T)
 
-anova(aoutHG2, aoutHG3)# density is significant in high Ne
+anova(aoutHG, aoutHG2, aoutHG3)# density is significant in high Ne
 
 
 #LG with just fitness
 aoutLG<- aster(resp~varb, pred, fam, varb, id, root, data=redataLG)
 
-#add density
-aoutLG2<- aster(resp~varb + fit:(Den), pred, fam, varb, id, root, data=redataLG)
+aoutLG1<- aster(resp~varb + fit:plotID, pred, fam, varb, id, root, data=redataLG)
+
+aoutLG2<- aster(resp~varb + fit:(plotID + Den), pred, fam, varb, id, root, data=redataLG)
 
 summary(aoutLG, show.graph = T)
+summary(aoutLG1, show.graph=T)
 summary(aoutLG2, show.graph=T)
 
-anova(aoutLG, aoutLG2)# density significant in low Ne
+anova(aoutLG, aoutLG1, aoutLG2)# density significant in low Ne
 
 ######################################################
 #####Fitness estimates for high and low Ne plants#####
@@ -319,7 +322,55 @@ HG
 
 LG
 
+#Estiamte of male fitness (seeds sired)
 
+#See markdown file for estimates of density-specific male fitness
+
+fin<- read.csv("data/aster.sire.dat.csv")
+
+fin$Den<- as.factor(fin$Den)
+fin$Gen<- as.factor(fin$Gen)
+fin$plotID<- as.factor(fin$plotID)
+fin$plantID<- as.factor(fin$plantID)
+fin$familyID<- as.factor(fin$familyID)
+
+
+vars<- c( "flw", "frt", "sires")
+
+redata <- reshape(fin, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
+
+fit <- grepl("sires", as.character(redata$varb))
+fit<- as.numeric(fit)
+
+redata$fit <- fit
+
+with(redata, sort(unique(as.character(varb)[fit == 0])))
+with(redata, sort(unique(as.character(varb)[fit == 1])))
+
+redata<- data.frame(redata, root=2)
+
+pred<- c(0,1,2)
+fam<- c(1,2,2)
+
+sapply(fam.default(), as.character)[fam]
+
+aout<- aster(resp~varb, pred, fam, varb, id, root, data=redata)
+
+summary(aout)
+
+aout2<- aster(resp~varb +fit:plotID, pred, fam, varb, id, root, data=redata)
+
+summary(aout2)
+
+aout3<- aster(resp~varb +fit:(plotID + familyID), pred, fam, varb, id, root, data=redata)
+
+summary(aout3)
+
+aout4<- aster(resp~varb +fit:(plotID + familyID + Den), pred, fam, varb, id, root, data=redata)
+
+summary(aout4)
+
+anova(aout, aout2, aout3, aout4)
 
 ##################################################################################
 #Calculate mean seed set for each treat x Ne treat to "relativize" female fitness#
@@ -332,7 +383,7 @@ aggregate(fin$seeds, by=list(fin$plotID), mean)
 
 ###############################################################################################
 ###############################################################################################
-#To compliment familyID estimates of fit via siring success, produce familyID estimates of 
+#To compliment familyID estimates of fitness via siring success, produce familyID estimates of 
 #fitness via seed set, on L, M, H density for High Ne
 ###############################################################################################
 ###############################################################################################
@@ -777,9 +828,38 @@ fin$pos[fin$plantID == 2 | fin$plantID==3| fin$plantID == 4 | fin$plantID==5|fin
 fin$pos<- as.factor(fin$pos)
 
 #analysis with position
-l<- lm(log(mass.a) ~ pos, data=fin)
+l<- lm(log(mass.a) ~ plotID, data=fin)
 
-lm<- lm(log(mass.a) ~ (Den) , data=fin)
+l2<- lm(log(mass.a) ~ plotID + Den, data=fin)
+
+l3<- lm(log(mass.a) ~ plotID + Den +Gen, data=fin)
+
+l4<- lm(log(mass.a) ~ plotID + Den + Gen +Den*Gen, data=fin)
+
+
+lb<- lm(log(mass.b) ~ plotID, data=fin)
+
+lb2<- lm(log(mass.b) ~ plotID + Den, data=fin)
+
+lb3<- lm(log(mass.b) ~ plotID + Den + Gen, data=fin)
+
+lb4<- lm(log(mass.b) ~ plotID + Den + Gen +Den*Gen, data=fin)
+
+
+
+lm1<- lm(log(mass.a) ~ (Den) , data=fin)
+
+lm2<- lm(log(mass.a) ~ (Den + pos) , data=fin)
+
+lm3<- lm(log(mass.a) ~ (Den + pos + Den*pos) , data=fin)
+
+anova(lm1, lm2, lm3)
+
+summary(lm1)
+summary(lm2)
+summary(lm3)
+
+
 
 lm2<- lm(log(mass.a) ~ (Den + Gen) , data=fin)
 
@@ -867,19 +947,21 @@ fin$familyID<- as.factor(fin$familyID)
 
 #################################################################
 #aboted embryo analysis with linear models
+lm<- lm(log(aborted +1) ~ plotID , data=fin)
 
+lm1<- lm(log(aborted +1) ~ plotID+Den , data=fin)
 
-lm1<- lm(log(aborted +1) ~ Den , data=fin)
+lm2<- lm(log(aborted +1) ~ plotID+Den + Gen, data=fin)
 
-lm2<- lm(log(aborted +1) ~ Den + Gen, data=fin)
+lm3<- lm(log(aborted +1) ~ plotID+Gen + Den + Den*Gen, data=fin)#interaction not significant       
 
-lm3<- lm(log(aborted +1) ~ Gen + Den + Den*Gen, data=fin)#interaction not significant       
+anova(lm, lm1, lm2, lm3)
 
-anova(lm1, lm2, lm3)
-
+summary(lm)
 summary(lm1)
 summary(lm2)
 summary(lm3)
+
 
 
 emmeans(lm3, "Den", "Gen", type="response")
