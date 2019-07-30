@@ -13,7 +13,7 @@
 #########################################################################################
 
 #set your working directory
-setwd("C:/Users/Mason Kulbaba/Dropbox/git/density-Ne")
+setwd("C:/Users/Mason Kulbaba/Dropbox/git/density-gen-Ne")
 
 #Begin with analysis of female fitenss (seeds set)
 
@@ -814,7 +814,7 @@ test(emmeans(f.lm2, "Den", type='response', by=vec))
 #subset data based on above criteria
 
 #reload data
-fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-Ne/data/aster.dat.csv")
+fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-gen-Ne/data/aster.dat.csv")
 
 
 fin$pos<- 0
@@ -845,13 +845,15 @@ lb3<- lm(log(mass.b) ~ plotID + Den + Gen, data=fin)
 
 lb4<- lm(log(mass.b) ~ plotID + Den + Gen +Den*Gen, data=fin)
 
+anova(lb, lb2, lb3, lb4)
 
+#check for positional effect
 
 lm1<- lm(log(mass.a) ~ (Den) , data=fin)
 
 lm2<- lm(log(mass.a) ~ (Den + pos) , data=fin)
 
-lm3<- lm(log(mass.a) ~ (Den + pos + Den*pos) , data=fin)
+lm3<- lm(log(mass.a) ~ Den + pos + Den*pos , data=fin)
 
 anova(lm1, lm2, lm3)
 
@@ -859,6 +861,9 @@ summary(lm1)
 summary(lm2)
 summary(lm3)
 
+library(lmtest)
+
+coeftest(lm3)
 
 
 lm2<- lm(log(mass.a) ~ (Den + Gen) , data=fin)
