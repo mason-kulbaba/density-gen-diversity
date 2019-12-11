@@ -126,16 +126,21 @@ redataLG<- droplevels(redataLG)
 #aster analysis with just fitness
 aoutHG<- aster(resp~varb, pred, fam, varb, id, root, data=redataHG)
 
-#add density
+
 aoutHG2<- aster(resp~varb + fit:plotID, pred, fam, varb, id, root, data=redataHG)
 
 aoutHG3<- aster(resp~varb + fit:(Den+ plotID), pred, fam, varb, id, root, data=redataHG)
 
+aoutHG4<- aster(resp~varb + fit:(Den+ plotID +familyID), pred, fam, varb, id, root, data=redataHG)
+
+
 summary(aoutHG, show.graph = T)
 summary(aoutHG2, show.graph=T)
 summary(aoutHG3, show.graph=T)
+summary(aoutHG4, show.graph=T)
 
-anova(aoutHG, aoutHG2, aoutHG3)# density is significant in high Ne
+
+anova(aoutHG, aoutHG2, aoutHG3, aoutHG4)# density is significant in high Ne
 
 
 #LG with just fitness
@@ -145,11 +150,15 @@ aoutLG1<- aster(resp~varb + fit:plotID, pred, fam, varb, id, root, data=redataLG
 
 aoutLG2<- aster(resp~varb + fit:(plotID + Den), pred, fam, varb, id, root, data=redataLG)
 
+aoutLG3<- aster(resp~varb + fit:(plotID + Den + familyID), pred, fam, varb, id, root, data=redataLG)
+
+
 summary(aoutLG, show.graph = T)
 summary(aoutLG1, show.graph=T)
 summary(aoutLG2, show.graph=T)
+summary(aoutLG3, show.graph=T)
 
-anova(aoutLG, aoutLG1, aoutLG2)# density significant in low Ne
+anova(aoutLG, aoutLG1, aoutLG2, aoutLG3)# density significant in low Ne
 
 ######################################################
 #####Fitness estimates for high and low Ne plants#####
@@ -358,15 +367,15 @@ aout<- aster(resp~varb, pred, fam, varb, id, root, data=redata)
 
 summary(aout)
 
-aout2<- aster(resp~varb +fit:plotID, pred, fam, varb, id, root, data=redata)
+aout2<- aster(resp~varb +fit:(plotID), pred, fam, varb, id, root, data=redata)
 
 summary(aout2)
 
-aout3<- aster(resp~varb +fit:(plotID + familyID), pred, fam, varb, id, root, data=redata)
+aout3<- aster(resp~varb +fit:(plotID + Den), pred, fam, varb, id, root, data=redata)
 
 summary(aout3)
 
-aout4<- aster(resp~varb +fit:(plotID + familyID + Den), pred, fam, varb, id, root, data=redata)
+aout4<- aster(resp~varb +fit:(plotID + Den + familyID), pred, fam, varb, id, root, data=redata)
 
 summary(aout4)
 
@@ -389,7 +398,7 @@ aggregate(fin$seeds, by=list(fin$plotID), mean)
 ###############################################################################################
 
 #Load data
-fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-Ne/data/aster.sire.dat.csv")
+fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-gen-Ne/data/aster.sire.dat.csv")
 
 #sum of number of seeds that we successfully assigned paternity to, per density treatment
 aggregate(fin$sires, by=list(fin$Den), sum)
