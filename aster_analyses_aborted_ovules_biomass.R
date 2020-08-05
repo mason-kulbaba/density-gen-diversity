@@ -390,6 +390,17 @@ anova(aout, aout2, aout3, aout4)
 aggregate(fin$seeds, by=list(fin$plotID), mean)
 
 
+#identify families in each plot
+
+hg<- subset(fin, Gen=="HG")
+lg<- subset(fin, Gen=="LG")
+
+
+aggregate(hg$familyID, by=list(hg$Den), unique)
+
+aggregate(lg$familyID, by=list(lg$Den), unique)
+
+
 ###############################################################################################
 ###############################################################################################
 #To compliment familyID estimates of fitness via siring success, produce familyID estimates of 
@@ -748,7 +759,10 @@ setDT(H_estimates, keep.rownames = TRUE)[]
 ###################################################################################
 
 #reload data
-fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-Ne/data/aster.dat.csv")
+fin<- read.csv("data/aster.dat.csv")
+
+
+
 
 library(emmeans)
 
@@ -756,6 +770,14 @@ library(emmeans)
 
 hi<- subset(fin, Gen=="HG")
 lo<- subset(fin, Gen=="LG")
+
+#test for equal variances
+
+library(car)
+
+
+leveneTest(mass.b ~ Treat, data = lo)
+
 
 # make a function for standard error
 
@@ -950,7 +972,7 @@ test(emmeans(b.lm2, "Den", type='response', by=vec))
 ##########################################################################
 
 #Load data
-fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-Ne/data/aster.dat.csv")
+fin<- read.csv("data/aster.dat.csv")
 
 #change class of factor variables
 fin$Den<- as.factor(fin$Den)
@@ -1023,7 +1045,7 @@ gs<- glm(seeds ~ Den + Gen + flw, family=poisson, data=fin)
 
 summary(gs)
 
-#quick pots by den
+#quick plots by den
 
 high<- subset(fin, Den=="H")
 med<- subset(fin, Den=="M")
@@ -1035,4 +1057,100 @@ plot(high$frt, high$seeds)
 plot(med$frt, med$seeds)
 
 plot(low$frt, low$seeds)
+
+
+###########################################################################
+# Analysis of proportion of aborted embryos
+
+
+#Load data
+fin<- read.csv("data/aster.dat.csv")
+
+#first, make variable of sum of aborted ovules and seeds: fertilized ovules
+
+fin$fert.ovules<- (fin$aborted + fin$seeds)
+
+#name make column of proportion of aborted embryos
+
+fin$prop.abort<- fin$aborted / fin$fert.ovules
+
+#Change NA to zeros
+
+#fin[is.na(fin)] <- 0
+
+
+#try removing na
+#fin<- fin[complete.cases(fin), ]
+
+
+
+#plantID and plotID as factor
+
+fin$plantID<- as.factor(fin$plantID)
+
+fin$plotID<- as.factor(fin$plotID)
+
+#make two column resoonse object for binomial
+
+#These models yield probability of successfull seed set
+
+resp<- cbind(fin$seeds, fin$fert.ovules)
+
+resp2<- cbind(fin$seeds, fin$aborted)
+
+t<- glm(resp2 ~ Den,family='binomial', data=fin)
+
+t1<- glm(resp2 ~ Den + Gen,family='binomial', data=fin)
+
+t2<- glm(resp2 ~ Den + Gen + (Den*Gen),family='binomial', data=fin)
+
+t3<- glm(resp2 ~ plotID + Den + Gen + (Den*Gen),family='binomial', data=fin)
+
+
+summary(t)
+summary(t1)
+summary(t2)
+summary(t3)
+
+AIC(t, t1, t2, t3)
+anova(t, t1, t2, t3)
+
+library(emmeans)
+
+
+emmeans(t3,"Den","Gen", type="response")
+
+pairs(emmeans(t3, "Gen", "Den", type='response'))
+test(emmeans(t3,"Den", "Gen", type='response'))
+
+# following models yield probability of embryo abortion
+
+resp.abort<- cbind(fin$aborted, fin$seeds)
+
+t<- glm(resp.abort ~ Gen,family='binomial', data=fin)
+
+t1<- glm(resp.abort ~  Den + Gen,family='binomial', data=fin)
+
+t2<- glm(resp.abort ~  Gen + Den + (Gen*Den) ,family='binomial', data=fin)
+
+t3<- glm(resp.abort ~  Gen + Den + (Gen*Den) + plotID ,family='binomial', data=fin)
+
+
+summary(t)
+summary(t1)
+summary(t2)
+summary(t3)
+
+AIC(t, t1, t2, t3)
+anova(t, t1, t2, t3)
+
+library(emmeans)
+
+
+emmeans(t3,"Den","Gen", type="response")
+
+pairs(emmeans(t3, "Gen", "Den", type='response'))
+test(emmeans(t3,"Den", "Gen", type='response'))
+
+
 

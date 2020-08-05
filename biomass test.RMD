@@ -1,0 +1,197 @@
+---
+title: "Test of Biomass as Covariate in Aster Models for Lifetime Fitness"
+author: "Mason W. Kulbaba & Ruth G. Shaw"
+date: "Last Updated June 28, 2020"
+output: pdf_document
+---
+
+# Introduction
+
+The following code tests, on the advice of Dr. Daniel Bolnick and Dr. Lynda Delph, the effect of biomass on female and male fitness, as determined with aster models.
+        
+## Preliminaries   
+
+Set working directory and load data.
+```{r global options, echo=FALSE}
+#setwd()
+```
+
+                                                                                           
+Examine data
+```{r }
+fin<- read.csv("data/aster.dat.csv")
+
+names(fin)
+
+head(fin)
+```
+
+Make sure Den (density treatment), Gen (N~e~ treatment), plotID, plantID, and familyID are all classified as factors. Otherwise
+```{r}
+fin$Den<- as.factor(fin$Den)
+fin$Gen<- as.factor(fin$Gen)
+fin$plotID<- as.factor(fin$plotID)
+fin$plantID<- as.factor(fin$plantID)
+fin$familyID<- as.factor(fin$familyID)
+```
+
+
+## Setting up for aster analyses
+
+Load aster package (make sure you have most current version)
+
+```{r, message = FALSE, warning = FALSE}
+library(aster)
+```
+
+Begin by naming variables that will be used in the graphical model of the aster analyses:
+
+**flw** - total number of flowers produced
+**frt** - total number of fruits produced
+**frt.2** - subsetted number of fruits collected
+**seeds** - total number of seeds collected from subsetted fruits
+
+```{r}
+vars<- c( "flw", "frt", "frt.2","seeds")
+```
+
+Reshape the data so that all response variables are located in a single vector, in a new data
+set called "redata"
+```{r}
+redata <- reshape(fin, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
+```
+
+Designate the terminal fitness variable "seeds" (make it numberic), and then add it to the reshaped data
+```{r}
+fit <- grepl("seeds", as.character(redata$varb))
+fit<- as.numeric(fit)
+redata$fit <- fit
+```
+
+Check
+```{r}
+with(redata, sort(unique(as.character(varb)[fit == 0])))
+with(redata, sort(unique(as.character(varb)[fit == 1])))
+```
+
+Add a variable "root" to redata, where value is 1. This is the "starting point" of the aster graphical model (i.e. a seed planted)
+```{r}
+redata<- data.frame(redata, root=1)
+```
+
+Set up the graphical model and designate the statistical distribution for each node.
+This graphical model has four nodes (in object `pred`) described earlier. Statistical family for each node is described by object `fam`.
+```{r}
+pred<- c(0,1,2,3)
+fam<- c(1,2,2,2)
+```
+
+Show distribution family for each node
+```{r}
+sapply(fam.default(), as.character)[fam]
+```
+
+
+
+# Main Aster Analyses for Female Fitness (Seeds set)
+
+First aster analysis with only fitness data. Note, `aster` reads the `redata` version of the data.
+
+```{r}
+aout<- aster(resp~varb, pred, fam, varb, id, root, data=redata)
+
+aout1<- aster(resp~varb + fit:(mass.a), pred, fam, varb, id, root, data=redata)
+
+aout2<- aster(resp~varb + fit:(mass.a + familyID), pred, fam, varb, id, root, data=redata)
+
+aout3<- aster(resp~varb + fit:(mass.a + familyID + Gen), pred, fam, varb, id, root, data=redata)
+
+aout4<- aster(resp~varb  + fit:(mass.a + familyID + Gen + Den), pred, fam, varb, id, root, data=redata)
+
+aout5<- aster(resp~varb + fit:(mass.a + familyID + Gen + Den + Gen*Den) , pred, fam, varb, id, root, data=redata)
+
+
+anova(aout, aout1, aout2, aout3, aout4, aout5)
+```
+
+### Interpretation
+Sequential addition of `familyID`, `Gen` (Ne), `Den` (density), `Gen * Den` (Gen by Den interaction), and finally `mass.a` (above ground biomass) consistently explained more variation in total lifetime fitness. Next, move on to specific models to estimate fitness across treatments.
+
+
+## Test of effectos of biomass on male fitness (relative number of seeds sired)
+
+Load data with relative number of seeds set (`rel.seeds`) and sired (`sires`).
+```{r}
+fin<- read.csv("C:/Users/Mason Kulbaba/Dropbox/git/density-gen-Ne/data/aster.sire.dat.csv")
+
+```
+
+Perform preliminary tasks of factor class setting, and organizing of data for density-treatment specific analyses, as the number of seeds sired was only estimated for the high N~e~ treatment.
+```{r}
+fin$Den<- as.factor(fin$Den)
+fin$Gen<- as.factor(fin$Gen)
+fin$plotID<- as.factor(fin$plotID)
+fin$plantID<- as.factor(fin$plantID)
+fin$familyID<- as.factor(fin$familyID)
+
+
+#subset data to density-specific treatments and 'drop' unused levels
+datH<- subset(fin, Den=="H")
+datH$familyID<- droplevels(datH$familyID)
+datM<- subset(fin, Den=="M")
+datM$familyID<- droplevels(datM$familyID)
+datL<- subset(fin, Den=="L")
+datL$familyID<- droplevels(datL$familyID)
+
+#set vars
+vars<- c( "flw", "frt", "sires")
+
+redata<- reshape(fin, varying = list(vars), direction = "long",timevar = "varb", times = as.factor(vars), v.names = "resp")
+
+
+```
+
+Designate fitness var
+```{r}
+#Designation of fitness variable
+fit <- grepl("sires", as.character(redata$varb))
+fit<- as.numeric(fit)
+
+#add fit to each of three redata files (one for each ensity treat)
+redata$fit <- fit
+
+```
+
+Add a variable "root" to redata, where value is 2
+
+```{r}
+redata<- data.frame(redata, root=2)
+```
+
+
+Set graphical model and statistical family for each node
+```{r}
+pred<- c(0,1,2)
+fam<- c(1,2,2)
+
+sapply(fam.default(), as.character)[fam]
+```
+
+Build aster models
+```{r}
+aout.sire<- aster(resp~varb, pred, fam, varb, id, root, data=redata)
+
+aout.sire2<- aster(resp~varb + fit:(mass.a), pred, fam, varb, id, root, data=redata)
+
+aout.sire3<- aster(resp~varb + fit:(mass.a + familyID), pred, fam, varb, id, root, data=redata)
+
+aout.sire4<- aster(resp~varb + fit:(mass.a + familyID + Den), pred, fam, varb, id, root, data=redata)
+
+anova(aout.sire, aout.sire2, aout.sire3, aout.sire4)
+```
+
+
+
+
+
+
