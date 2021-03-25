@@ -59,7 +59,7 @@ redata<- data.frame(redata, root=1)
 
 #set graph. model and family for each node
 pred<- c(0,1,2,3) # 4 nodes
-fam<- c(1,2,2,2)
+fam<- c(1,2,1,2)
 
 #check family 
 sapply(fam.default(), as.character)[fam]
